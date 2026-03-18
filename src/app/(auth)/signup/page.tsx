@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BookOpen, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -14,6 +16,8 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,30 +37,86 @@ export default function SignupPage() {
     }
 
     try {
-      // TODO: Supabase auth
-      // const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: name } } });
-      console.log("Signup:", { name, email, password });
-      window.location.href = "/onboarding";
+      const supabase = createClient();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: name,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      // Check if email confirmation is required
+      // Supabase may auto-confirm or require email verification
+      setSuccess(true);
+
+      // Try to sign in immediately (works if auto-confirm is on)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (!signInError) {
+        router.push("/onboarding");
+        router.refresh();
+      }
+      // If sign-in fails, the success message will show (email confirmation needed)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Signup failed. Please try again.");
+      setError(
+        err instanceof Error ? err.message : "Signup failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="shadow-lg">
+            <CardContent className="p-8 text-center">
+              <div className="text-4xl mb-4">📧</div>
+              <h1 className="text-2xl font-bold text-gray-900">Check Your Email</h1>
+              <p className="text-gray-500 mt-2">
+                We sent a confirmation link to <strong>{email}</strong>. Click it
+                to activate your account, then come back and log in.
+              </p>
+              <Link href="/login">
+                <Button className="mt-6" size="lg">
+                  Go to Login
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Link href="/" className="flex items-center justify-center gap-2 mb-8">
           <BookOpen className="h-8 w-8 text-blue-600" />
-          <span className="text-xl font-bold text-gray-900">IELTS Fast Track</span>
+          <span className="text-xl font-bold text-gray-900">
+            IELTS Fast Track
+          </span>
         </Link>
 
         <Card className="shadow-lg">
           <CardContent className="p-8">
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Create Your Account</h1>
-              <p className="text-sm text-gray-500 mt-1">Start preparing for IELTS today — it&apos;s free</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Create Your Account
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Start preparing for IELTS today — it&apos;s free
+              </p>
             </div>
 
             {error && (
@@ -67,7 +127,10 @@ export default function SignupPage() {
 
             <form onSubmit={handleSignup} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
                   Your Name
                 </label>
                 <div className="relative">
@@ -85,7 +148,10 @@ export default function SignupPage() {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
                   Email
                 </label>
                 <div className="relative">
@@ -103,7 +169,10 @@ export default function SignupPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
                   Password
                 </label>
                 <div className="relative">
@@ -122,7 +191,10 @@ export default function SignupPage() {
               </div>
 
               <div>
-                <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  htmlFor="confirm"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -139,7 +211,12 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={loading}
+              >
                 {loading ? "Creating account..." : "Create Account"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -147,7 +224,10 @@ export default function SignupPage() {
 
             <div className="mt-6 text-center text-sm text-gray-500">
               Already have an account?{" "}
-              <Link href="/login" className="text-blue-600 font-medium hover:text-blue-700">
+              <Link
+                href="/login"
+                className="text-blue-600 font-medium hover:text-blue-700"
+              >
                 Log in
               </Link>
             </div>

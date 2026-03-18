@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpen, ArrowRight, ArrowLeft, Clock, Target, Zap, Trophy, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase";
 
 const languages = [
   { code: "fr", name: "Français", flag: "🇫🇷" },
@@ -73,19 +75,57 @@ export default function OnboardingPage() {
   const [testDate, setTestDate] = useState("");
   const [noDate, setNoDate] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState("14-day");
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
   const totalSteps = 4;
 
-  const handleComplete = () => {
-    // TODO: Save to Supabase profiles table
-    console.log("Onboarding complete:", {
-      name,
-      nativeLanguage,
-      targetBand,
-      testDate: noDate ? null : testDate,
-      selectedTrack,
+  // Pre-fill name from auth metadata
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.user_metadata?.display_name) {
+        setName(user.user_metadata.display_name);
+      }
     });
-    window.location.href = "/dashboard";
+  }, []);
+
+  const handleComplete = async () => {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Get track ID from slug
+      const { data: track } = await supabase
+        .from("tracks")
+        .select("id")
+        .eq("slug", selectedTrack)
+        .single();
+
+      // Update profile
+      const { error } = await supabase.from("profiles").upsert({
+        id: user.id,
+        display_name: name,
+        native_language: nativeLanguage,
+        target_band: targetBand,
+        target_test_date: noDate ? null : testDate || null,
+        current_track_id: track?.id || null,
+        current_track_day: 1,
+      });
+
+      if (error) throw error;
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      console.error("Onboarding save error:", err);
+      // Still redirect — profile can be updated later
+      router.push("/dashboard");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Auto-recommend track based on test date
@@ -307,8 +347,8 @@ export default function OnboardingPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={handleComplete} size="lg">
-                  Start Studying →
+                <Button onClick={handleComplete} size="lg" disabled={saving}>
+                  {saving ? "Setting up..." : "Start Studying →"}
                 </Button>
               )}
             </div>

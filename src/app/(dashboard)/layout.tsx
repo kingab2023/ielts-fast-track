@@ -2,8 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, LayoutDashboard, Route, PenTool, Mic, FileCheck, User, ChevronRight } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  Route,
+  PenTool,
+  Mic,
+  FileCheck,
+  User,
+  ChevronRight,
+  LogOut,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
 const sidebarItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -14,12 +25,9 @@ const sidebarItems = [
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,7 +37,9 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-blue-600" />
-              <span className="font-bold text-gray-900 hidden sm:block">IELTS Fast Track</span>
+              <span className="font-bold text-gray-900 hidden sm:block">
+                IELTS Fast Track
+              </span>
             </Link>
           </div>
 
@@ -37,11 +47,21 @@ export default function DashboardLayout({
             <button className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1 rounded">
               🇬🇧/🇫🇷
             </button>
-            <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            >
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <User className="h-4 w-4 text-blue-600" />
               </div>
             </Link>
+            <button
+              onClick={signOut}
+              className="text-sm text-gray-400 hover:text-red-600 p-2 rounded-lg transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
@@ -51,7 +71,9 @@ export default function DashboardLayout({
         <aside className="hidden lg:flex flex-col w-60 border-r border-gray-200 bg-white min-h-[calc(100vh-3.5rem)]">
           <nav className="flex-1 p-4 space-y-1">
             {sidebarItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.href}
@@ -65,7 +87,9 @@ export default function DashboardLayout({
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
-                  {isActive && <ChevronRight className="ml-auto h-3 w-3" />}
+                  {isActive && (
+                    <ChevronRight className="ml-auto h-3 w-3" />
+                  )}
                 </Link>
               );
             })}
@@ -84,7 +108,9 @@ export default function DashboardLayout({
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
         <div className="flex items-center justify-around h-16">
           {sidebarItems.slice(0, 5).map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive =
+              pathname === item.href ||
+              pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
@@ -102,5 +128,17 @@ export default function DashboardLayout({
         </div>
       </nav>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </AuthProvider>
   );
 }
